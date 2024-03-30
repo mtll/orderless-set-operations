@@ -1,5 +1,11 @@
 ;;; orderless-set-operations.el --- this file is not part of GNU Emacs. -*- lexical-binding: t -*-
 ;;
+;; Filename: orderless-set-operations.el
+;; Description: Rudimentary completion set operations a la Icicles
+;; Author: David Feller
+;; Package-Version: 0.1
+;; Package-Requires: ((emacs "29.1") (compat "29.1.4.4") (orderless "1.1"))
+;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
@@ -21,7 +27,12 @@
 
 (require 'orderless)
 (eval-when-compile
-  (require 'cl-lib))
+  (require 'cl-lib)
+  (require 'subr-x))
+
+(defgroup orderless-set-operations ()
+  "Rudimentary completion set operations a la Icicles."
+  :group 'minibuffer)
 
 (defvar oso-update-hook nil)
 
@@ -37,11 +48,13 @@ and the current completion set.")
 
 (defface oso-narrow-indicator-face
   '((t (:inherit isearch)))
-  "Face for modeline narrow indicator.")
+  "Face for modeline narrow indicator."
+  :group 'orderless-set-operations)
 
 (defface oso-stack-face
   '((t (:foreground "black")))
-  "Face for modeline set stack display.")
+  "Face for modeline set stack display."
+  :group 'orderless-set-operations)
 
 (defvar-keymap oso-completion-set-map
   "M-SPC" 'oso-push
@@ -68,7 +81,8 @@ and the current completion set.")
 `orderless-compile'. If COMPLEMENT is non-nil do negative matching
 of the resulting orderless pattern.
 
-TABLE and PRED are `minibuffer-completion-table' and `minibuffer-completion-predicate'."
+TABLE and PRED are `minibuffer-completion-table' and
+`minibuffer-completion-predicate'."
   (pcase-let* ((limit (car (completion-boundaries string table pred "")))
                (pattern (substring string limit))
                (`(,pred . ,regexps) (orderless-compile pattern))
@@ -99,7 +113,8 @@ TABLE and PRED are `minibuffer-completion-table' and `minibuffer-completion-pred
 `orderless-compile'. If COMPLEMENT is non-nil do negative matching
 of the resulting orderless pattern.
 
-TABLE and PRED are `minibuffer-completion-table' and `minibuffer-completion-predicate'."
+TABLE and PRED are `minibuffer-completion-table' and
+`minibuffer-completion-predicate'."
   (make-oso-set
    :operation (if complement
                   (lambda (str) (not (funcall (cdr predicate) str)))
@@ -164,16 +179,6 @@ TABLE and PRED are `minibuffer-completion-table' and `minibuffer-completion-pred
                               minibuffer-completion-table
                               minibuffer-completion-predicate
                               "")))
-
-(cl-defmethod oso--split (&context ((car completion-styles)
-                                    (eql consult--split)))
-  (let* ((split (consult--async-split-style))
-         (fn (plist-get split :function))
-         (string (minibuffer-contents))
-         (s (funcall fn string split)))
-    (pcase s
-      (`(,_ ,beg . ,_) beg)
-      (_ (length string)))))
 
 (defun oso-toggle-narrow ()
   (interactive)
@@ -246,11 +251,10 @@ set to the stack."
   (let ((set (gensym))
         (set1 (gensym))
         (set2 (gensym)))
-    `(defun ,(intern (concat "oso-" (symbol-name name))) (&optional interactive)
+    `(defun ,(intern (concat "oso-" (symbol-name name))) (&optional interactive-p)
        ,(if (stringp (car body)) (pop body) "")
        (interactive (list t))
-       (when (called-interactively-p)
-         (oso--maybe-push))
+       (when interactive-p (oso--maybe-push))
        (when (cdr oso--set-stack)
          (let* ((,set2 (pop oso--set-stack))
                 (,set1 (pop oso--set-stack))
@@ -414,6 +418,11 @@ set to the stack."
 (provide 'orderless-set-operations)
 
 (with-eval-after-load 'vertico
+  (defvar vertico--input)
+  (defvar vertico--index)
+  (defvar vertico--candidates)
+  (declare-function oso--vertico-update-candidate-display "vertico")
+
   (defun oso--vertico-update-candidate-display ()
     (setq vertico--input t))
   (add-hook 'oso-update-hook #'oso--vertico-update-candidate-display)
@@ -430,6 +439,9 @@ set to the stack."
   (keymap-set oso-completion-set-map "C-S-u" 'oso-not-selected-candidate))
 
 (with-eval-after-load 'embark
+  (defvar embark--selection)
+  (declare-function embark-selected-candidates "embark")
+
   (defun oso-not-marked-candidates ()
     (interactive)
     (let ((selected (embark-selected-candidates)))
@@ -441,3 +453,17 @@ set to the stack."
       (setq embark--selection nil))
     (oso--update-stack))
   (keymap-set oso-completion-set-map "C-S-o" 'oso-not-marked-candidates))
+
+(with-eval-after-load 'consult
+  (defvar consult--split)
+  (declare-function consult--async-split-style "consult")
+
+  (cl-defmethod oso--split (&context ((car completion-styles)
+                                      (eql consult--split)))
+    (let* ((split (consult--async-split-style))
+           (fn (plist-get split :function))
+           (string (minibuffer-contents))
+           (s (funcall fn string split)))
+      (pcase s
+        (`(,_ ,beg . ,_) beg)
+        (_ (length string))))))
