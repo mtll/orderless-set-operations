@@ -396,11 +396,6 @@ set to the stack."
                         (mode (buffer-local-value 'major-mode buf)))
                (string-match-p regexp (symbol-name mode)))))))
 
-(with-eval-after-load 'vertico
-  (defun oso--vertico-update-candidate-display ()
-    (setq vertico--input t))
-  (add-hook 'oso-update-hook #'oso--vertico-update-candidate-display))
-
 (define-derived-mode oso-set-display-mode nil "Completion Set"
   "Major mode for diplaying oso completion sets.")
 
@@ -417,3 +412,32 @@ set to the stack."
       (advice-remove fun #'oso--advice))))
 
 (provide 'orderless-set-operations)
+
+(with-eval-after-load 'vertico
+  (defun oso--vertico-update-candidate-display ()
+    (setq vertico--input t))
+  (add-hook 'oso-update-hook #'oso--vertico-update-candidate-display)
+
+  (defun oso-not-selected-candidate ()
+    (interactive)
+    (let ((regexp (substring-no-properties (nth vertico--index vertico--candidates))))
+      (push (make-oso-set
+             :operation (lambda (str) (not (string= regexp str)))
+             :operands nil
+             :description (concat "(∁ " (nth vertico--index vertico--candidates) ")"))
+            oso--set-stack))
+    (oso--update-stack))
+  (keymap-set oso-completion-set-map "C-S-u" 'oso-not-selected-candidate))
+
+(with-eval-after-load 'embark
+  (defun oso-not-marked-candidates ()
+    (interactive)
+    (let ((selected (embark-selected-candidates)))
+      (push (make-oso-set
+             :operation (lambda (str) (not (member str selected)))
+             :operands nil
+             :description (concat "(∁ EMBARK-SELECTION)"))
+            oso--set-stack)
+      (setq embark--selection nil))
+    (oso--update-stack))
+  (keymap-set oso-completion-set-map "C-S-o" 'oso-not-marked-candidates))
