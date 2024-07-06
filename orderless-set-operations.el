@@ -176,7 +176,7 @@ TABLE and PRED are `minibuffer-completion-table' and
 (defun oso--setup ()
   (add-hook 'minibuffer-exit-hook
             (lambda ()
-              (when-let (buf (get-buffer "*oso-stack*"))
+              (when-let (buf (get-buffer "*Orderless Set Stack*"))
                 (delete-windows-on buf)
                 (kill-buffer buf)))
             nil t)
@@ -361,27 +361,18 @@ set to the stack."
                                          (eq (window-buffer mbwin) (window-buffer win)))
                                 win)))
                           (window-list))))
-    (delete-windows-on (get-buffer-create "*oso-stack*" t))
-    (with-current-buffer-window (get-buffer-create "*oso-stack*" t)
-        (if window
-            `(display-buffer-in-direction
-              (window-height . fit-window-to-buffer)
-              (direction . above)
-              (window . ,window)
-              (body-function
-               . ,(lambda (_window)
-                    (dolist (set set-stack)
-                      (insert (oso-set-description set) "\n"))
-                    (oso-set-display-mode)
-                    (setq buffer-read-only t))))
-          `(display-buffer-at-bottom
-            (window-height . fit-window-to-buffer)
-            (body-function
-             . ,(lambda (_window)
-                  (dolist (set set-stack)
-                    (insert (oso-set-description set) "\n"))
-                  (oso-set-display-mode)
-                  (setq buffer-read-only t)))))
+    (with-current-buffer-window (get-buffer-create "*Orderless Set Stack*" t)
+        `((display-buffer-reuse-window
+           ,(if window 'display-buffer-in-direction 'display-buffer-at-bottom))
+          (window-height . fit-window-to-buffer)
+          (direction . above)
+          (window . ,window)
+          (body-function
+           . ,(lambda (_window)
+                (dolist (set set-stack)
+                  (insert (oso-set-description set) "\n"))
+                (oso-set-display-mode)
+                (setq buffer-read-only t))))
         nil)
     (overlay-put
      oso--stack-ov
