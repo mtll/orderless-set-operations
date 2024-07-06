@@ -32,7 +32,28 @@
 
 (defgroup orderless-set-operations ()
   "Rudimentary completion set operations a la Icicles."
-  :group 'minibuffer)
+  :group 'minibuffer
+  :prefix "oso-")
+
+(defcustom oso-complement-string "C"
+  "String to indicate completion set complement."
+  :group 'orderless-set-operations)
+
+(defcustom oso-union-string "∪"
+  "String to indicate completion set union."
+  :group 'orderless-set-operations)
+
+(defcustom oso-intersection-string "∩"
+  "String to indicate completion set intersection."
+  :group 'orderless-set-operations)
+
+(defcustom oso-difference-string "∖"
+  "String to indicate completion set difference."
+  :group 'orderless-set-operations)
+
+(defcustom oso-symmetric-difference-string "∆"
+  "String to indicate completion set symmetric difference."
+  :group 'orderless-set-operations)
 
 (defvar oso-update-hook nil)
 
@@ -105,7 +126,7 @@ TABLE and PRED are `minibuffer-completion-table' and
                          (or (not pred) (funcall pred str)))))
      :operands string
      :description (if complement
-                      (concat "(∁ \"" string "\")")
+                      (concat "(" oso-complement-string " \"" string "\")")
                     (concat "\"" string "\"")))))
 
 (defun oso--build-predicate (predicate _t _p complement)
@@ -272,19 +293,19 @@ set to the stack."
            (push ,set oso--set-stack)))
        (oso--update-stack))))
 
-(oso-set-op union "∪" (str p1 p2)
+(oso-set-op union oso-union-string (str p1 p2)
   "Union all completion sets."
   (or (funcall p1 str) (funcall p2 str)))
 
-(oso-set-op intersection "∩" (str p1 p2)
+(oso-set-op intersection oso-intersection-string (str p1 p2)
   "Union all completion sets."
   (and (funcall p1 str) (funcall p2 str)))
 
-(oso-set-op symmetric-difference "∆" (str p1 p2)
+(oso-set-op symmetric-difference oso-symmetric-difference-string (str p1 p2)
   "Union all completion sets."
   (xor (funcall p1 str) (funcall p2 str)))
 
-(oso-set-op difference "∖" (str p1 p2)
+(oso-set-op difference oso-difference-string (str p1 p2)
   "Union all completion sets."
   (and (funcall p1 str) (not (funcall p2 str))))
 
@@ -400,7 +421,7 @@ set to the stack."
                         (mode (buffer-local-value 'major-mode buf)))
                (string-match-p regexp (symbol-name mode)))))))
 
-(define-derived-mode oso-set-display-mode nil "Completion Set"
+(define-derived-mode oso-set-display-mode special-mode "Completion Set"
   "Major mode for diplaying oso completion sets.")
 
 (put 'oso-set-display-mode 'mode-class 'special)
