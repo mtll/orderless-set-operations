@@ -91,8 +91,7 @@ and the current completion set.")
   "C-+" 'oso-union
   "C-*" 'oso-intersection
   "C-_" 'oso-symmetric-difference
-  "C-^" 'oso-unwrap
-  "C-#" 'oso-filter)
+  "C-^" 'oso-unwrap)
 
 (cl-defstruct (oso-set)
   operation operands description)
@@ -294,23 +293,18 @@ set to the stack."
        (oso--update-stack))))
 
 (oso-set-op union oso-union-string (str p1 p2)
-  "Union all completion sets."
   (or (funcall p1 str) (funcall p2 str)))
 
 (oso-set-op intersection oso-intersection-string (str p1 p2)
-  "Union all completion sets."
   (and (funcall p1 str) (funcall p2 str)))
 
 (oso-set-op symmetric-difference oso-symmetric-difference-string (str p1 p2)
-  "Union all completion sets."
   (xor (funcall p1 str) (funcall p2 str)))
 
 (oso-set-op difference oso-difference-string (str p1 p2)
-  "Union all completion sets."
   (and (funcall p1 str) (not (funcall p2 str))))
 
 (defun oso-swap ()
-  "Union all completion sets."
   (interactive)
   (if (>= (length oso--set-stack) 2)
       (let* ((set1 (pop oso--set-stack))
@@ -321,7 +315,6 @@ set to the stack."
   (oso--update-stack))
 
 (defun oso-reverse ()
-  "Union all completion sets."
   (interactive)
   (setq oso--set-stack (reverse oso--set-stack))
   (oso--update-stack))
@@ -399,27 +392,6 @@ set to the stack."
                           (concat  " "))
                       "")))
   (run-hooks 'oso-update-hook))
-
-(defun oso--metadata-get (prop)
-  (let ((md (completion-metadata (minibuffer-contents-no-properties)
-                                 minibuffer-completion-table
-                                 minibuffer-completion-predicate)))
-    (completion-metadata-get md prop)))
-
-(defun oso--category (cand)
-  (let ((cat (oso--metadata-get 'category)))
-    (if (eq 'multi-category cat)
-        (car (get-text-property 0 'multi-category cand))
-      cat)))
-
-(defun orderless-major-mode (pred regexp)
-  (lambda (str)
-    (and (or (not pred) (funcall pred str))
-         (eq (oso--category str) 'buffer)
-         (or (not regexp)
-             (when-let ((buf (get-buffer (or (cdr (get-text-property 0 'multi-category str)) str)))
-                        (mode (buffer-local-value 'major-mode buf)))
-               (string-match-p regexp (symbol-name mode)))))))
 
 (define-derived-mode oso-set-display-mode special-mode "Completion Set"
   "Major mode for diplaying oso completion sets.")
