@@ -37,23 +37,28 @@
 
 (defcustom oso-complement-string "C"
   "String to indicate completion set complement."
-  :group 'orderless-set-operations)
+  :group 'orderless-set-operations
+  :type 'string)
 
 (defcustom oso-union-string "∪"
   "String to indicate completion set union."
-  :group 'orderless-set-operations)
+  :group 'orderless-set-operations
+  :type 'string)
 
 (defcustom oso-intersection-string "∩"
   "String to indicate completion set intersection."
-  :group 'orderless-set-operations)
+  :group 'orderless-set-operations
+  :type 'string)
 
 (defcustom oso-difference-string "∖"
   "String to indicate completion set difference."
-  :group 'orderless-set-operations)
+  :group 'orderless-set-operations
+  :type 'string)
 
 (defcustom oso-symmetric-difference-string "∆"
   "String to indicate completion set symmetric difference."
-  :group 'orderless-set-operations)
+  :group 'orderless-set-operations
+  :type 'string)
 
 (defvar oso-update-hook nil)
 
