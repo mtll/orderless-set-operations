@@ -230,36 +230,43 @@ set to the stack."
   (let* ((beg (oso--split))
          (start (minibuffer--completion-prompt-end))
          (pat (substring (minibuffer-contents) beg)))
-    (if (string= pat "")
-        (when (car oso--set-stack)
-          (push (copy-oso-set (car oso--set-stack)) oso--set-stack))
-      (push (oso--build-pattern-predicate
-             pat
-             minibuffer-completion-table
-             minibuffer-completion-predicate
-             complement)
-            oso--set-stack)
-      (delete-region (+ start beg) (point-max))))
+    (cond ((and (bound-and-true-p embark--selection)
+                (fboundp 'oso--push-embark-marked))
+           (oso--push-embark-marked))
+          ((string= pat "")
+           (when (car oso--set-stack)
+             (push (copy-oso-set (car oso--set-stack)) oso--set-stack)))
+          (t
+           (push (oso--build-pattern-predicate
+                  pat
+                  minibuffer-completion-table
+                  minibuffer-completion-predicate
+                  complement)
+                 oso--set-stack)
+           (delete-region (+ start beg) (point-max)))))
   (oso--update-stack))
 
 (defun oso--maybe-push ()
   (let* ((beg (oso--split))
          (start (minibuffer--completion-prompt-end))
          (pat (substring (minibuffer-contents) beg)))
-    (unless (string= pat "")
-      (push (oso--build-pattern-predicate
-             pat
-             minibuffer-completion-table
-             minibuffer-completion-predicate
-             nil)
-            oso--set-stack)
-      (delete-region (+ start beg) (point-max))))
+    (cond ((and (bound-and-true-p embark--selection)
+                (fboundp 'oso--push-embark-marked))
+            (oso--push-embark-marked))
+          ((not (string= pat ""))
+           (push (oso--build-pattern-predicate
+                  pat
+                  minibuffer-completion-table
+                  minibuffer-completion-predicate
+                  nil)
+                 oso--set-stack)
+           (delete-region (+ start beg) (point-max)))))
   (oso--update-stack))
 
-(defun oso-complement ()
+(defun oso-complement (&optional interactivep)
   "Complement the head of the completion set stack."
-  (interactive)
-  (oso--maybe-push)
+  (interactive (list t))
+  (when interactivep (oso--maybe-push))
   (when oso--set-stack
     (let* ((set (pop oso--set-stack))
            (memberp (oso-set-operation set)))
@@ -431,17 +438,17 @@ set to the stack."
   (defvar embark--selection)
   (declare-function embark-selected-candidates "embark")
 
-  (defun oso-not-marked-candidates ()
-    (interactive)
+  (defun oso--push-embark-marked ()
     (let ((selected (embark-selected-candidates)))
       (push (make-oso-set
-             :operation (lambda (str) (not (member str selected)))
+             :operation (lambda (str) (member str selected))
              :operands nil
-             :description (concat "(∁ EMBARK-SELECTION)"))
+             :description (concat "EMBARK-SELECTION"))
             oso--set-stack)
+      (dolist (s embark--selection)
+        (when (cdr s) (delete-overlay (cdr s))))
       (setq embark--selection nil))
-    (oso--update-stack))
-  (keymap-set oso-completion-set-map "C-S-o" 'oso-not-marked-candidates))
+    (oso--update-stack)))
 
 (with-eval-after-load 'consult
   (defvar consult--split)
@@ -456,3 +463,4 @@ set to the stack."
       (pcase s
         (`(,_ ,beg . ,_) beg)
         (_ (length string))))))
+;;; orderless-set-operations.el ends here
