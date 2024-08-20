@@ -133,22 +133,6 @@ TABLE and PRED are `minibuffer-completion-table' and
                       (concat "(" oso-complement-string " \"" string "\")")
                     (concat "\"" string "\"")))))
 
-(defun oso--build-predicate (predicate _t _p complement)
-  "Build a predicate for `completing-read' from STRING using
-`orderless-compile'. If COMPLEMENT is non-nil do negative matching
-of the resulting orderless pattern.
-
-TABLE and PRED are `minibuffer-completion-table' and
-`minibuffer-completion-predicate'."
-  (make-oso-set
-   :operation (if complement
-                  (lambda (str) (not (funcall (cdr predicate) str)))
-                (cdr predicate))
-   :operands nil
-   :description (if complement
-                    (concat "(∁ " (car predicate) ")")
-                  (car predicate))))
-
 (cl-defmethod register-val-describe ((val oso-set) _arg)
   (princ (format "Completion set:\n%s" (oso-set-description val))))
 
