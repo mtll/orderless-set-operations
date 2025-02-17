@@ -62,8 +62,6 @@
 
 (defvar oso-update-hook nil)
 
-(defvar-local oso--stack-ov nil)
-
 (defvar-local oso--narrow nil)
 
 (defvar-local oso--set-stack nil
@@ -73,7 +71,7 @@ Set operations operate on the completion sets in the stack
 and the current completion set.")
 
 (defface oso-narrow-indicator-face
-  '((t (:inherit isearch)))
+  '((t (:inherit highlight :bold t)))
   "Face for modeline narrow indicator."
   :group 'orderless-set-operations)
 
@@ -171,8 +169,6 @@ TABLE and PRED are `minibuffer-completion-table' and
                     `((name . "oso-predicate")
                       (oso . t)))
     (setq-local minibuffer-completion-predicate #'oso--completion-predicate))
-  (setq-local oso--stack-ov (make-overlay (point-min) (point-min) nil t t))
-  (overlay-put oso--stack-ov 'priority -100)
   (use-local-map (make-composed-keymap oso-completion-set-map (current-local-map))))
 
 (defun oso--advice (&rest app)
@@ -276,9 +272,9 @@ set to the stack."
                   :operation (lambda (,str) ,@body)
                   :operands (list ,set1 ,set2)
                   :description (concat "(" ,symbol " "
-                                       (oso-set-description ,set1)
-                                       " "
                                        (oso-set-description ,set2)
+                                       " "
+                                       (oso-set-description ,set1)
                                        ")"))))
            (push ,set oso--set-stack)))
        (oso--update-stack))))
@@ -366,15 +362,7 @@ set to the stack."
                     (insert (oso-set-description set) "\n"))
                   (oso-set-display-mode)
                   (setq buffer-read-only t))))
-          nil)
-      (overlay-put
-       oso--stack-ov
-       'before-string (if oso--narrow
-                          (thread-first
-                            "[N]"
-                            (propertize 'face 'oso-narrow-indicator-face)
-                            (concat  " "))
-                        "")))
+          nil))
     (run-hooks 'oso-update-hook)))
 
 (define-derived-mode oso-set-display-mode special-mode "Completion Set"
@@ -420,17 +408,21 @@ set to the stack."
       (delete-windows-on "*Orderless Set Stack*"))
     (with-current-buffer (overlay-buffer vertico--candidates-ov)
       (setq-local header-line-format
-                  (cl-loop for set in oso--set-stack
-                           concat (oso-set-description set)
-                           concat " ")))
-    (overlay-put
-     oso--stack-ov
-     'before-string (if oso--narrow
-                        (thread-first
-                          "[N]"
-                          (propertize 'face 'oso-narrow-indicator-face)
-                          (concat  " "))
-                      ""))
+                  (concat
+                   (propertize "Filters:"
+                               'face
+                               (when oso--narrow
+                                 'oso-narrow-indicator-face))
+                   " "
+                   (or (ignore-errors
+                         (oso-set-description (car oso--set-stack)))
+                       "")
+                   " "
+                   (or (cl-loop for set in (cdr oso--set-stack)
+                                concat (propertize (oso-set-description set)
+                                                   'face 'shadow)
+                                concat " ")
+                       ""))))
     (run-hooks 'oso-update-hook)))
 
 (with-eval-after-load 'embark
