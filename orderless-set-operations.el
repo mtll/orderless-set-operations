@@ -409,13 +409,12 @@ set to the stack."
     (with-current-buffer (overlay-buffer vertico--candidates-ov)
       (setq-local header-line-format
                   (concat
-                   (propertize "Filters:"
-                               'face
-                               (when oso--narrow
-                                 'oso-narrow-indicator-face))
+                   "Sets:"
                    " "
                    (or (ignore-errors
-                         (oso-set-description (car oso--set-stack)))
+                         (propertize (oso-set-description (car oso--set-stack))
+                                     'face
+                                     (when oso--narrow 'highlight)))
                        "")
                    " "
                    (or (cl-loop for set in (cdr oso--set-stack)
