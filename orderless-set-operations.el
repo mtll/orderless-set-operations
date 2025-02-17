@@ -77,14 +77,9 @@ and the current completion set.")
   "Face for modeline narrow indicator."
   :group 'orderless-set-operations)
 
-(defface oso-stack-face
-  '((t (:foreground "black")))
-  "Face for modeline set stack display."
-  :group 'orderless-set-operations)
-
 (defvar-keymap oso-completion-set-map
-  "M-SPC" 'oso-push
-  "C-M-SPC" 'oso-unwrap
+  "S-SPC" 'oso-push
+  "C-S-SPC" 'oso-pop
   "C-@" 'oso-reduce
   "C-|" 'oso-reverse
   "C-!" 'oso-complement
@@ -349,36 +344,38 @@ set to the stack."
         (t (user-error "Unknown operation.")))
   (oso--update-stack))
 
-(defun oso--update-stack ()
-  (let ((set-stack oso--set-stack)
-        (window (seq-find (let ((mbwin (active-minibuffer-window)))
-                            (lambda (win)
-                              (when (and mbwin (not (eq win mbwin))
-                                         (eq (window-buffer mbwin) (window-buffer win)))
-                                win)))
-                          (window-list))))
-    (with-current-buffer-window (get-buffer-create "*Orderless Set Stack*" t)
-        `((display-buffer-reuse-window
-           ,(if window 'display-buffer-in-direction 'display-buffer-at-bottom))
-          (window-height . fit-window-to-buffer)
-          (direction . above)
-          (window . ,window)
-          (body-function
-           . ,(lambda (_window)
-                (dolist (set set-stack)
-                  (insert (oso-set-description set) "\n"))
-                (oso-set-display-mode)
-                (setq buffer-read-only t))))
-        nil)
-    (overlay-put
-     oso--stack-ov
-     'before-string (if oso--narrow
-                        (thread-first
-                          "[N]"
-                          (propertize 'face 'oso-narrow-indicator-face)
-                          (concat  " "))
-                      "")))
-  (run-hooks 'oso-update-hook))
+(cl-defgeneric oso--update-stack ()
+  ( :method ()
+    (let ((set-stack oso--set-stack)
+          (window (seq-find (let ((mbwin (active-minibuffer-window)))
+                              (lambda (win)
+                                (when (and mbwin (not (eq win mbwin))
+                                           (eq (window-buffer mbwin) (window-buffer win)))
+                                  win)))
+                            (window-list))))
+      (with-current-buffer-window (get-buffer-create "*Orderless Set Stack*" t)
+          `((display-buffer-reuse-window
+             ,(if window 'display-buffer-in-direction 'display-buffer-at-bottom))
+            (window-height . fit-window-to-buffer)
+            (direction . above)
+            (window . ,window)
+            (dedicated . t)
+            (body-function
+             . ,(lambda (_window)
+                  (dolist (set set-stack)
+                    (insert (oso-set-description set) "\n"))
+                  (oso-set-display-mode)
+                  (setq buffer-read-only t))))
+          nil)
+      (overlay-put
+       oso--stack-ov
+       'before-string (if oso--narrow
+                          (thread-first
+                            "[N]"
+                            (propertize 'face 'oso-narrow-indicator-face)
+                            (concat  " "))
+                        "")))
+    (run-hooks 'oso-update-hook)))
 
 (define-derived-mode oso-set-display-mode special-mode "Completion Set"
   "Major mode for diplaying oso completion sets.")
@@ -416,7 +413,25 @@ set to the stack."
              :description (concat "(∁ " (nth vertico--index vertico--candidates) ")"))
             oso--set-stack))
     (oso--update-stack))
-  (keymap-set oso-completion-set-map "C-S-u" 'oso-not-selected-candidate))
+  (keymap-set oso-completion-set-map "C-S-u" 'oso-not-selected-candidate)
+
+  (cl-defmethod oso--update-stack (&context (vertico-buffer-mode (eql t)))
+    (when (get-buffer "*Orderless Set Stack*")
+      (delete-windows-on "*Orderless Set Stack*"))
+    (with-current-buffer (overlay-buffer vertico--candidates-ov)
+      (setq-local header-line-format
+                  (cl-loop for set in oso--set-stack
+                           concat (oso-set-description set)
+                           concat " ")))
+    (overlay-put
+     oso--stack-ov
+     'before-string (if oso--narrow
+                        (thread-first
+                          "[N]"
+                          (propertize 'face 'oso-narrow-indicator-face)
+                          (concat  " "))
+                      ""))
+    (run-hooks 'oso-update-hook)))
 
 (with-eval-after-load 'embark
   (defvar embark--selection)
