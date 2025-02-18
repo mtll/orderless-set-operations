@@ -85,10 +85,10 @@ and the current completion set.")
   "C->" 'oso-completion-set-to-register
   "<backtab>" 'oso-toggle-narrow
   "C-~" 'oso-swap
-  "C-M--" 'oso-difference
+  "C-M--" 'oso-symmetric-difference
   "C-+" 'oso-union
   "C-*" 'oso-intersection
-  "C-_" 'oso-symmetric-difference
+  "C-_" 'oso-difference
   "C-^" 'oso-unwrap)
 
 (cl-defstruct (oso-set)
@@ -272,9 +272,9 @@ set to the stack."
                   :operation (lambda (,str) ,@body)
                   :operands (list ,set1 ,set2)
                   :description (concat "(" ,symbol " "
-                                       (oso-set-description ,set2)
-                                       " "
                                        (oso-set-description ,set1)
+                                       " "
+                                       (oso-set-description ,set2)
                                        ")"))))
            (push ,set oso--set-stack)))
        (oso--update-stack))))
@@ -446,7 +446,8 @@ set to the stack."
 
   (cl-defmethod oso--split (&context ((car completion-styles)
                                       (eql consult--split)))
-    (let* ((split (consult--async-split-style))
+    (let* ((split (alist-get (or consult-async-split-style 'none)
+                             consult-async-split-styles-alist))
            (fn (plist-get split :function))
            (string (minibuffer-contents))
            (s (funcall fn string split)))
